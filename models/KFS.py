@@ -16,9 +16,9 @@ from layers.Autoformer_EncDec import series_decomp
 
 
 
-class EnEmbedding(nn.Module):
+class AEmbedding(nn.Module):
     def __init__(self, n_vars, d_model, seq_len, dropout):
-        super(EnEmbedding, self).__init__()
+        super(AEmbedding, self).__init__()
         # Patching
         self.seq_len = seq_len
 
@@ -74,58 +74,6 @@ class KAN(nn.Module):
         return x
 
 
-class Gaussian1DFilter(nn.Module):
-    def __init__(self, kernel_size=5, sigma=1.0, padding_mode='reflect'):
-        """
-        B: Batch size, L: Sequence length, C: Channels
-        输入: [B, L, C] → 输出: [B, L, C]
-        :param kernel_size: 卷积核大小（奇数）
-        :param sigma: 高斯核标准差
-        :param padding_mode: 边界填充模式 ('reflect', 'zeros' 等)
-        """
-        super().__init__()
-        self.kernel_size = kernel_size
-        self.sigma = sigma
-        self.pad = kernel_size // 2
-        self.padding_mode = padding_mode
-
-        # 预生成高斯核（不参与梯度计算）
-        self.register_buffer("kernel", self._build_kernel())
-
-    def _build_kernel(self):
-        """生成一维高斯核 [1, 1, kernel_size]"""
-        x = torch.arange(self.kernel_size, dtype=torch.float) - self.pad
-        kernel = torch.exp(-x ** 2 / (2 * self.sigma ** 2))
-        kernel = kernel / kernel.sum()  # 归一化
-        return kernel.view(1, 1, -1)  # [1, 1, K]
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        :param x: 输入张量 [B, L, C]
-        :return: 滤波后张量 [B, L, C]
-        """
-        # 调整维度顺序: [B, L, C] → [B, C, L]（PyTorch卷积要求）
-        x = x.permute(0, 2, 1)  # [B, C, L]
-
-        # 边界填充（避免序列两端失真）
-        x_pad = F.pad(x, (self.pad, self.pad), mode=self.padding_mode)
-
-        # 分组卷积（每个通道独立滤波）
-        # 复制核以匹配通道数: [1,1,K] → [C,1,K]
-        kernel = self.kernel.repeat(x.shape[1], 1, 1)  # [C, 1, K]
-
-        # 执行一维卷积
-        output = F.conv1d(
-            x_pad,
-            weight=kernel,
-            bias=None,
-            groups=x.shape[1],  # 关键：分组数=通道数
-            padding=0
-        )
-
-        # 恢复原始维度顺序: [B, C, L] → [B, L, C]
-        return output
-
 
 
 def FFT_for_Period(x, k=3):
@@ -171,7 +119,7 @@ def FFT_for_Period_percent(x,percent, low_k=8):
     mask_cum = cum_topk >= target_energy
     mask_cum[:,:low_k,:] = False
     first_true_index = torch.argmax(mask_cum.int(), dim=1)  # [B, C]
-    n_to_keep = torch.clamp(first_true_index + 1, max=k)  # 限制不超过k
+    n_to_keep = torch.clamp(first_true_index + 1, max=k)  
     # least K masking
     mask = torch.zeros_like(energy, dtype=torch.float)  # [B, Freq, C]
     k_index = torch.arange(k, device=x.device).view(1, k, 1)  # [1, k, 1]
@@ -205,7 +153,7 @@ class FReK(nn.Module):
         else:
             self.k=configs.k
         self.l = configs.seq_len//(2**l)
-        self.enc_embedding = EnEmbedding(configs.enc_in, configs.d_model, self.l, configs.dropout)
+        self.enc_embedding = AEmbedding(configs.enc_in, configs.d_model, self.l, configs.dropout)
         self.decomposite = series_decomp(configs.moving_avg)
         self.percent = configs.percent / 100 if configs.percent != 100 else 1
 
