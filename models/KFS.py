@@ -8,7 +8,6 @@ import numpy as np
 from layers.RevIN import RevIN
 
 from math import sqrt
-from utils.masking import TriangularCausalMask, ProbMask
 from layers.StandardNorm import Normalize
 from layers.Autoformer_EncDec import series_decomp
 
