@@ -110,32 +110,26 @@ def FFT_for_Loss_percent(x, low_k=8):
     xf = torch.clone(xf1)
     n_freq = xf.shape[1]
     xf[:,0,:] = 0
-    # 计算能量
     energy = torch.abs(xf) ** 2  # [B, Freq, C]
     total_energy = torch.sum(energy, dim=1, keepdim=True)  # [B, 1, C]
 
-    # 确保k不超过频率数
     k = n_freq
     topk_energy, topk_indices = torch.topk(energy, k, dim=1)  # [B, k, C]
 
-    # 计算累积能量并确定保留数
     cum_topk = torch.cumsum(topk_energy, dim=1)  # [B, k, C]
     target_energy = total_energy * 0.95  # [B, 1, C]
     mask_cum = cum_topk >= target_energy
     mask_cum[:,:low_k,:] = False
     first_true_index = torch.argmax(mask_cum.int(), dim=1)  # [B, C]
-    n_to_keep = torch.clamp(first_true_index + 1, max=k)  # 限制不超过k
-    # 创建保留掩码
+    n_to_keep = torch.clamp(first_true_index + 1, max=k)  
     mask = torch.zeros_like(energy, dtype=torch.float)  # [B, Freq, C]
     k_index = torch.arange(k, device=x.device).view(1, k, 1)  # [1, k, 1]
     keep_mask = (k_index < n_to_keep.unsqueeze(1))  # [B, k, C]
 
-    # 使用高级索引赋值（修复scatter_错误）
     B, k_val, C = topk_indices.shape
     batch_idx = torch.arange(B, device=x.device)[:, None, None].expand(-1, k_val, C)
     channel_idx = torch.arange(C, device=x.device)[None, None, :].expand(B, k_val, -1)
     mask[batch_idx, topk_indices, channel_idx] = keep_mask.float()
-    # 应用掩码并重建信号
     return mask
 
 
