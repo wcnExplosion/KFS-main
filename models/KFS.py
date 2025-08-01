@@ -175,7 +175,7 @@ class FTC_fusion(nn.Module):
                                     ,nn.Linear(configs.d_ff,configs.d_model))
         self.KAN = KAN(in_features=2*configs.d_model,hidden_features=configs.d_ff,out_features=configs.d_model)
 
-    def forward(self,x,xf): #x B,C,d, xf B,C,d w B,C
+    def forward(self,x,xf): #x B,C,d, xf B,C,d 
         B,C,D = x.shape
         x1 = torch.cat((x,xf),dim=-1)
         out = self.KAN(x1)
