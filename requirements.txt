@@ -1,0 +1,9 @@
+einops==0.8.0
+numpy==1.23.5
+pandas==2.2.2
+scikit-learn==1.5.1
+scipy==1.14.1
+skorch==1.0.0
+sktime==0.34.1
+torch==2.1.0
+tqdm==4.66.5
