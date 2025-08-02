@@ -1,4 +1,4 @@
-# KT
+# KFS
 
 The official Code Implement for the paper "KFS: KAN based adaptive Frequency Selection learning architecture for long term time series forecasting"
 
